@@ -27,7 +27,7 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
 
     #Generate random polar signaling data
     s_data = np.random.choice([1, -1], snapshots) + 1j*np.random.choice([1, -1], snapshots)
-    print(np.shape(s_data))
+
     if plot_sent:
         X = [x.real for x in s_data]
         Y = [x.imag for x in s_data]
@@ -37,11 +37,12 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
     #FIR channel in frequency domain
     hf = np.fft.fft(channel, subcarriers)
 
+
     #S/P conversion
-    p_data = np.reshape(s_data, (subcarriers, frame_number))
+    p_data = np.reshape(s_data, (subcarriers, frame_number), order="F")
 
     #Convert data to time domain
-    p_td = np.fft.ifft(p_data)
+    p_td = np.fft.ifft(p_data, axis=0)
 
     #Get cyclic prefix of given lenght
     cyclic_prefix = p_td[-cyclic_prefix_lenght:, :]
@@ -50,25 +51,26 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
     p_cyc = np.concatenate((cyclic_prefix, p_td), axis=0)
 
     #P/S conversion
-    s_cyc = np.reshape(p_cyc, ((subcarriers+cyclic_prefix_lenght)*frame_number, 1))
+    s_cyc = np.reshape(p_cyc, ((subcarriers+cyclic_prefix_lenght)*frame_number, 1), order="F")
 
     #Pass data through channel
     chs_out = sig.lfilter(channel, 1, s_cyc, axis=0)
 
     #Add noise
-    x_out = chs_out#add_noise(chs_out, SNR)
+    x_out = add_noise(chs_out, SNR)
 
     #P/S conversion and cyclic prefix removal
-    x_para = np.reshape(x_out, (subcarriers+cyclic_prefix_lenght, frame_number))
+    x_para = np.reshape(x_out, (subcarriers+cyclic_prefix_lenght, frame_number), order="F")
     x_disc = x_para[cyclic_prefix_lenght:, :]
 
     #FFT to F domain
-    x_hat_para = np.fft.fft(x_disc)
+    x_hat_para = np.fft.fft(x_disc, axis=0)
+
 
     z_data = np.matmul(np.linalg.inv(np.diag(hf)), x_hat_para)
 
     if plot_received:
-        X = [x.real for x in z_data[10,:]]
-        Y = [x.imag for x in z_data[10,:]]
+        X = [x.real for x in z_data]
+        Y = [x.imag for x in z_data]
         plt.scatter(X, Y, color='red')
         plt.show()
