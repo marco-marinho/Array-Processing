@@ -37,14 +37,13 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
     #FIR channel in frequency domain
     hf = np.fft.fft(channel, subcarriers)
 
-
     #S/P conversion
     p_data = np.reshape(s_data, (subcarriers, frame_number), order="F")
 
     #Convert data to time domain
     p_td = np.fft.ifft(p_data, axis=0)
 
-    #Get cyclic prefix of given lenght
+    #Get cyclic prefix of given length
     cyclic_prefix = p_td[-cyclic_prefix_lenght:, :]
 
     #Data frames with cyclic prefix
@@ -66,11 +65,12 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
     #FFT to F domain
     x_hat_para = np.fft.fft(x_disc, axis=0)
 
-
     z_data = np.matmul(np.linalg.inv(np.diag(hf)), x_hat_para)
 
     if plot_received:
-        X = [x.real for x in z_data]
-        Y = [x.imag for x in z_data]
-        plt.scatter(X, Y, color='red')
-        plt.show()
+        for z in [1, 10]:
+            X = [x.real for x in z_data[z,:]]
+            Y = [x.imag for x in z_data[z,:]]
+            plt.scatter(X, Y, color='red')
+
+    plt.show()
