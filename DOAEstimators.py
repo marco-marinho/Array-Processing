@@ -1,6 +1,7 @@
 import numpy as np
 import SteeringGenerator as stg
 import AlgebraLibrary as alg
+import matplotlib.pyplot as plt
 
 
 def conventional_beamformer(signal, resolution, separation = 1/2):
@@ -55,15 +56,17 @@ def ESPRIT(signal, model_order, separation = 1/2):
 
 def SAGE_sparse(signal, model_order, positions, wavenumber, resolution):
 
-    angles = np.arange(-90, 90, resolution);
-    doas_ini = np.arrange(0, 180, 180/model_order)
-    doas_ini = doas_ini[1:model_order+1] - 90
-
+    Xn = signal
+    angles = np.arange(-90, 90, resolution)
+    doas_ini = np.arange(0, 180, 180/model_order)
+    doas_ini = [60, ]
+    # print(doas_ini)
+    # doas_ini = doas_ini[0:model_order] - 90
+    # print(doas_ini)
     doas_est = stg.generate_sparse_vectors(doas_ini, positions, wavenumber)
 
-    samples = np.shape(signal)[1]
-
-    sig_est = np.zeros(model_order, samples)
+    samples = np.shape(Xn)[1]
+    N = len(positions)
 
     ESAGE_doas = np.zeros(model_order)
 
@@ -72,5 +75,31 @@ def SAGE_sparse(signal, model_order, positions, wavenumber, resolution):
     for iter in range(100):
 
         for signal in range(model_order):
+            Kx = Ks[signal, signal] * (doas_est[:, signal] @ doas_est[:, signal].T) + np.identity(N)
 
-            Kx = Ks[signal, signal]*doas_est[:, signal]*doas_est[:, signal].T + np.identity(samples)
+            Ky = (doas_est[:, [signal]] @ Ks @ doas_est[:, [signal]].T) + np.identity(N)
+
+            Ry = alg.get_covariance(Xn)
+
+            Cx = (Kx @ np.linalg.pinv(Ky) @ Ry @  np.linalg.pinv(Ky) @ Kx) + Kx - (Kx @  np.linalg.pinv(Ky) @ Kx)
+
+            Pmaxexp = []
+            for angle in range(len(angles)):
+                A_search = stg.generate_sparse_vectors([angles[angle], ], positions, wavenumber)
+                #Pmaxexp.append(np.squeeze(np.abs((A_search.T  @ Cx @ A_search)/(A_search.T @ A_search))))
+                Pmaxexp.append(np.squeeze(np.abs(A_search.T @ Cx @ A_search)))
+            print(np.shape(Pmaxexp))
+            plt.plot(angles, Pmaxexp)
+            plt.show()
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            A_filter = stg.generate_sparse_vectors([angles[index], ], positions, wavenumber)
+            Ks[signal, signal] = np.abs(((1/(A_filter.T @ A_filter))*((A_filter.T @ Cx @ A_filter)/(A_filter.T @ A_filter)))-1/N)
+
+            doas_est[:, signal] = A_filter[:, 0]
+
+            ESAGE_doas[signal] = angles[index]
+
+            print(angles[index])
+
+    return ESAGE_doas

@@ -40,6 +40,9 @@ class Line:
     def getIntercept(self):
         return self.b
 
+    def getY(self, x):
+        return self.m*x + self.b
+
 #Function for calculating the intecerp point between two lines
 def getLinesIntercept(line_1, line_2):
     x = (line_2.getIntercept() - line_1.getIntercept())/(line_1.getSlope() - line_2.getSlope())
@@ -71,3 +74,29 @@ def getPointInLineGivenDistance(line, point_1, distance):
     y_2 = point_1.getY() - line.getSlope() * distance * np.sqrt(1 / (1 + line.getSlope() ** 2))
 
     return [Point(x_1, y_1), Point(x_2, y_2)]
+
+
+def getPointGivenSlopeDistance(slope, point_1, distance):
+    x_1 = point_1.getX() + distance*np.sqrt(1/(1+slope**2))
+    y_1 = point_1.getY() + slope*distance*np.sqrt(1/(1+slope**2))
+
+    x_2 = point_1.getX() - distance * np.sqrt(1 / (1 + slope ** 2))
+    y_2 = point_1.getY() - slope * distance * np.sqrt(1 / (1 + slope ** 2))
+
+    return [Point(x_1, y_1), Point(x_2, y_2)]
+
+def isPointInLine(point, line):
+    if (line.getSlope()*point.getX() + line.getIntercept()) != point.getY():
+        return False
+    else:
+        return True
+
+def getPointsPositiveY(points):
+    result = []
+
+    for point in points:
+        if point.getY() >= 0:
+            result.append(point)
+
+    return result
+
