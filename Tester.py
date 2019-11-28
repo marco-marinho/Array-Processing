@@ -16,14 +16,16 @@ import GeometryLibrary as geo
 # plt.plot(angles, angular_power)
 # plt.show()
 
-positions = [[-1, 1], [-1, 0],  [-1, -1], [-0.5, 0.5], [-0.5, -0.5], [0, 1], [0, 0], [0, -1], [0.5, 0.5], [0.5, -0.5], [1, 1], [1, 0], [1, -1]]
-A = str.generate_sparse_vectors([60, ], positions, 0.125)
-S = sig.gen_signal(1, 100, 30)
+# positions = [[-1, 1], [-1, 0],  [-1, -1], [-0.5, 0.5], [-0.5, -0.5], [0, 1], [0, 0], [0, -1], [0.5, 0.5], [0.5, -0.5], [1, 1], [1, 0], [1, -1]]
+# A = str.generate_sparse_vectors([60, ], positions, 0.125)
+A = str.generate_ula_vectors([-45, ], 10, 1/2)
+S = sig.gen_signal(1, 100)
 X = np.matmul(A, S)
-angular_power, angles = est.conventional_beamformer_sparse(X, 1, positions, 0.125)
+X = sig.add_noise(X, 30)
+angular_power, angles = est.conventional_beamformer(X, 0.1, 1/2)
 plt.plot(angles, angular_power)
 plt.show()
-DOAS = est.SAGE_sparse(X, 1, positions, 0.125, 0.1)
+DOAS = est.SAGE(X, 1, 0.1, 1/2)
 #
 #
 # plt.plot(angles, angular_power)

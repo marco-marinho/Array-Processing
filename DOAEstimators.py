@@ -54,6 +54,54 @@ def ESPRIT(signal, model_order, separation = 1/2):
 
     return ESPRIT_doas
 
+def SAGE(received_signal, model_order, resolution = 0.1, separation = 1/2):
+
+    Xn = received_signal
+    angles = np.arange(-90, 90, resolution)
+    print(angles)
+    doas_ini = np.arange(0, 180, 180 / model_order)
+    ESAGE_doas = np.zeros(model_order)
+    N = np.shape(Xn)[0]
+
+    doas_est = stg.generate_ula_vectors([doas_ini, ], N, separation)
+
+    Ks = np.identity(model_order)
+
+    for iter in range(30):
+
+        for signal in range(model_order):
+
+            Kx = Ks[signal, signal] * doas_est @ np.conj(doas_est).T + np.identity(N)
+
+            Ky = doas_est @ Ks @ np.conj(doas_est).T + np.identity(N)
+
+            Ry = alg.get_covariance(Xn)
+
+            Cx = Kx @ np.linalg.inv(Ky) @ Ry @ np.linalg.inv(Ky) @ Kx + Kx - Kx @ np.linalg.inv(Ky) @ Kx
+
+            Pmaxexp = []
+
+            for angle in range(len(angles)):
+                A = stg.generate_ula_vectors([angles[angle], ], N, separation)
+                Pmaxexp.append(np.squeeze(np.abs(np.conj(A).T @ Cx @ A / np.conj(A).T @ A)))
+
+            plt.plot(angles, Pmaxexp)
+            plt.show()
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            ESAGE_doas[signal] = angles[index]
+
+            A_filter = stg.generate_ula_vectors([angles[index], ], N, separation)
+
+            Ks[signal, signal] = np.abs(((1/(np.conj(A_filter).T@A_filter))@((np.conj(A_filter).T@Cx@A_filter)/(np.conj(A_filter).T@A_filter)))-1/N);
+
+            doas_est[:, signal] = A_filter[:, 0]
+
+            print(angles[index])
+
+
 def SAGE_sparse(signal, model_order, positions, wavenumber, resolution):
 
     Xn = signal
