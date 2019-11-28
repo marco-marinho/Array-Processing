@@ -4,12 +4,11 @@ import math
 import matplotlib.pyplot as plt
 
 #Generates 4 QAM symbols for given number of sources and snapshots with specified SNR
-def gen_signal(sources, snapshots, SNR = np.inf):
+def gen_signal(sources, snapshots):
     real = np.random.choice([1, -1], (sources, snapshots))
     imaginary = 1j*np.random.choice([1, -1], (sources, snapshots))
     symbols = np.add(real, imaginary)
-    noisy_symbols = add_noise(symbols, SNR)
-    return noisy_symbols
+    return symbols
 
 #Adds AWGN noise with specified SNR measuring clean signal power
 def add_noise(signal, SNR):
