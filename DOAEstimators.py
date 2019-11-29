@@ -52,8 +52,6 @@ def ESPRIT(signal, model_order, separation = 1/2):
     phi = np.linalg.lstsq(Qs[0:-1, :], Qs[1:, :], rcond=None)[0]
     ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
 
-
-
     return ESPRIT_doas
 
 def ESPRIT_Polarization(signal, model_order, separation = 1/2):
@@ -117,6 +115,79 @@ def SAGE(received_signal, model_order, resolution = 0.1, separation = 1/2):
             last_DOAS = ESAGE_doas
 
     return ESAGE_doas
+
+def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation = 1/2, E_ref = 1):
+
+    Xn = received_signal
+    angles = np.arange(-90, 90+resolution, resolution)
+    reflections = np.arange(0, 90+resolution, resolution)
+
+    doas_ini = np.arange(0, 180, 180 / model_order)
+    reflection_ini = np.zeros(model_order)
+
+    ESAGE_doas = np.zeros(model_order)
+    ESAGE_polarization = np.zeros(model_order)
+    N = int(np.shape(Xn)[0]/2)
+    print(N)
+
+
+    doas_est = stg.generate_ula_vectors(doas_ini, N, separation)
+    reflections_est = stg.generate_polarization_steering(reflection_ini, E_ref)
+
+    steering_est = stg.merge_space_polarization_steering(doas_est, reflections_est)
+
+    Ks = np.identity(model_order)
+    last_DOAS = []
+    for iter in range(30):
+
+        for signal in range(model_order):
+
+            Kx = Ks[signal, signal] * steering_est[:, [signal]] @ np.conj(steering_est[:, [signal]]).T + np.identity(N*2)
+
+            Ky = steering_est @ Ks @ np.conj(steering_est).T + np.identity(N*2)
+
+            Ry = alg.get_covariance(Xn)
+
+            Cx = Kx @ np.linalg.inv(Ky) @ Ry @ np.linalg.inv(Ky) @ Kx + Kx - Kx @ np.linalg.inv(Ky) @ Kx
+
+            Pmaxexp = []
+
+            for angle in range(len(angles)):
+
+                A_s = stg.generate_ula_vectors(angles[angle], N, separation)
+                u = stg.generate_polarization_steering([ESAGE_polarization[signal], ], E_ref)
+                A = stg.merge_space_polarization_steering(A_s, u)
+                Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
+
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            ESAGE_doas[signal] = angles[index]
+            A_e = stg.generate_ula_vectors(angles[index], N, separation)
+            Pmaxexp = []
+
+            for angle in range(len(reflections)):
+                A_s = stg.generate_ula_vectors(angles[index], N, separation)
+                u = stg.generate_polarization_steering([reflections[angle], ], E_ref)
+                A = stg.merge_space_polarization_steering(A_s, u)
+                Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
+
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            ESAGE_polarization[signal] = reflections[index]
+
+            u_e = stg.generate_polarization_steering([reflections[index], ], E_ref)
+            A_filter = stg.merge_space_polarization_steering(A_e, u_e)
+
+            Ks[signal, signal] = np.abs(((1/(np.conj(A_filter).T@A_filter))@((np.conj(A_filter).T@Cx@A_filter)/(np.conj(A_filter).T@A_filter)))-1/N);
+
+            steering_est[:, signal] = A_filter[:, 0]
+
+        if np.array_equal(last_DOAS, ESAGE_doas):
+            break
+        else:
+            last_DOAS = ESAGE_doas
+
+    return ESAGE_doas, ESAGE_polarization
 
 
 def SAGE_sparse(received_signal, model_order, positions, wavenumber, resolution):

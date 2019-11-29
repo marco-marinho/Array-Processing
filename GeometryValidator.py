@@ -34,6 +34,8 @@ print(geo.isPointInLine(point_3, line_3))
 line_4 = geo.Line.fromPoints(point_1, point_4)
 line_5 = geo.Line.fromPoints(point_4, point_3)
 
+print(geo.getAngleLines(line_4, line_5, inDegree=True))
+
 distance_2 = geo.getPointDistance(point_1, point_4)+geo.getPointDistance(point_4, point_3)
 
 points_3 = geo.getPointGivenSlopeDistance(line_5.getSlope(), point_1, distance_2)
