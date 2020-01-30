@@ -128,8 +128,6 @@ def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation
     ESAGE_doas = np.zeros(model_order)
     ESAGE_polarization = np.zeros(model_order)
     N = int(np.shape(Xn)[0]/2)
-    print(N)
-
 
     doas_est = stg.generate_ula_vectors(doas_ini, N, separation)
     reflections_est = stg.generate_polarization_steering(reflection_ini, E_ref)
@@ -152,10 +150,10 @@ def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation
 
             Pmaxexp = []
 
+            u = stg.generate_polarization_steering([ESAGE_polarization[signal], ], E_ref)
             for angle in range(len(angles)):
 
                 A_s = stg.generate_ula_vectors(angles[angle], N, separation)
-                u = stg.generate_polarization_steering([ESAGE_polarization[signal], ], E_ref)
                 A = stg.merge_space_polarization_steering(A_s, u)
                 Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
 
@@ -165,8 +163,9 @@ def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation
             A_e = stg.generate_ula_vectors(angles[index], N, separation)
             Pmaxexp = []
 
+            A_s = stg.generate_ula_vectors(angles[index], N, separation)
             for angle in range(len(reflections)):
-                A_s = stg.generate_ula_vectors(angles[index], N, separation)
+
                 u = stg.generate_polarization_steering([reflections[angle], ], E_ref)
                 A = stg.merge_space_polarization_steering(A_s, u)
                 Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
@@ -196,8 +195,6 @@ def SAGE_sparse(received_signal, model_order, positions, wavenumber, resolution)
     angles = np.arange(-90, 90 + resolution, resolution)
 
     doas_ini = np.arange(0, 180, 180 / model_order)
-
-    ESAGE_doas = np.zeros(model_order)
 
     doas_est = stg.generate_sparse_vectors(doas_ini, positions, wavenumber)
 

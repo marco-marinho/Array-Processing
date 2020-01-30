@@ -36,9 +36,6 @@ def generate_polarization_steering(angles, E_ref):
 
 def merge_space_polarization_steering(A, u):
 
-    Z = np.zeros((np.shape(A)[0]*2, np.shape(A)[1]))
-
-    for signal in range(np.shape(A)[1]):
-        Z = tls.khatri_rao([A, u])
+    Z = tls.khatri_rao([A, u])
 
     return Z

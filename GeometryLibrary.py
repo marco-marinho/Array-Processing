@@ -100,3 +100,55 @@ def getPointsPositiveY(points):
 
     return result
 
+def getIncidenceAngle(point_1, point_2, inDegree = False):
+    line = Line.fromPoints(point_1, point_2)
+    m = line.getSlope()
+    if m > 0:
+        if inDegree:
+            return (np.pi/2 - np.arctan(m))*(180/np.pi)
+        return np.pi/2 - np.arctan(m)
+    else:
+        if inDegree:
+            return -(np.pi/2 + np.arctan(m))*(180/np.pi)
+        return -(np.pi/2 + np.arctan(m))
+
+
+def getReflectionAngle(transmitter, reflector, receiver, inDegree = False):
+    line_1 = Line.fromPoints(transmitter, reflector)
+    if inDegree:
+        return line_1.getAngle()*180/np.pi
+    return line_1.getAngle()
+
+def reflectionToSlope(doa, reflection, inDegrees = False):
+    if doa < 0:
+        if inDegrees:
+            return np.tan(reflection*np.pi/180)
+        else:
+            return np.tan(reflection)
+
+    else:
+        if inDegrees:
+            return -1*np.tan(reflection*np.pi/180)
+        else:
+            return -1*np.tan(reflection)
+
+def incidenceToSlope(angle, inDegres = False):
+    if angle > 0:
+        if inDegres:
+            return np.tan((np.pi / 2) - angle*np.pi/180)
+        return np.tan((np.pi/2) - angle)
+    else:
+        if inDegres:
+            return -1*np.tan((np.pi / 2) + angle*np.pi/180)
+        return -1*np.tan((np.pi/2) + angle)
+
+def getReflectorLine(line_doa, angle_reflection):
+
+    doa_slope = line_doa.getSlope()
+
+    if doa_slope < 0:
+        m_reflector = 180((angle_reflection*2)-np.arctan(doa_slope))
+
+    line_reflector = Line(m_reflector, 0)
+
+    return line_reflector
