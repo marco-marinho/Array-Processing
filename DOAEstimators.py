@@ -120,7 +120,7 @@ def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation
 
     Xn = received_signal
     angles = np.arange(-90, 90+resolution, resolution)
-    reflections = np.arange(0, 90+resolution, resolution)
+    reflections = np.arange(0, 180+resolution, resolution)
 
     doas_ini = np.arange(0, 180, 180 / model_order)
     reflection_ini = np.zeros(model_order)
@@ -177,7 +177,80 @@ def SAGE_Polarization(received_signal, model_order, resolution = 0.1, separation
             u_e = stg.generate_polarization_steering([reflections[index], ], E_ref)
             A_filter = stg.merge_space_polarization_steering(A_e, u_e)
 
-            Ks[signal, signal] = np.abs(((1/(np.conj(A_filter).T@A_filter))@((np.conj(A_filter).T@Cx@A_filter)/(np.conj(A_filter).T@A_filter)))-1/N);
+            Ks[signal, signal] = np.abs(((1/(np.conj(A_filter).T@A_filter)))@((np.conj(A_filter).T@Cx@A_filter)/(np.conj(A_filter).T@A_filter)-1/model_order))
+
+            steering_est[:, signal] = A_filter[:, 0]
+
+        if np.array_equal(last_DOAS, ESAGE_doas):
+            break
+        else:
+            last_DOAS = ESAGE_doas
+
+    return ESAGE_doas, ESAGE_polarization
+
+
+def SAGE_Polarization_Center(received_signal, model_order, resolution = 0.1, separation = 1/2, E_ref = 1):
+
+    Xn = received_signal
+    angles = np.arange(-90, 90+resolution, resolution)
+    reflections = np.arange(0, 180+resolution, resolution)
+
+    doas_ini = np.arange(0, 180, 180 / model_order)
+    reflection_ini = np.zeros(model_order)
+
+    ESAGE_doas = np.zeros(model_order)
+    ESAGE_polarization = np.zeros(model_order)
+    N = int(np.shape(Xn)[0]/2)
+
+    doas_est = stg.generate_ula_vectors_center(doas_ini, N, separation)
+    reflections_est = stg.generate_polarization_steering(reflection_ini, E_ref)
+
+    steering_est = stg.merge_space_polarization_steering(doas_est, reflections_est)
+
+    Ks = np.identity(model_order)
+    last_DOAS = []
+    for iter in range(30):
+
+        for signal in range(model_order):
+
+            Kx = Ks[signal, signal] * steering_est[:, [signal]] @ np.conj(steering_est[:, [signal]]).T + np.identity(N*2)
+
+            Ky = steering_est @ Ks @ np.conj(steering_est).T + np.identity(N*2)
+
+            Ry = alg.get_covariance(Xn)
+
+            Cx = Kx @ np.linalg.inv(Ky) @ Ry @ np.linalg.inv(Ky) @ Kx + Kx - Kx @ np.linalg.inv(Ky) @ Kx
+
+            Pmaxexp = []
+
+            u = stg.generate_polarization_steering([ESAGE_polarization[signal], ], E_ref)
+            for angle in range(len(angles)):
+
+                A_s = stg.generate_ula_vectors_center(angles[angle], N, separation)
+                A = stg.merge_space_polarization_steering(A_s, u)
+                Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
+
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            ESAGE_doas[signal] = angles[index]
+            A_e = stg.generate_ula_vectors_center(angles[index], N, separation)
+            Pmaxexp = []
+
+            A_s = stg.generate_ula_vectors_center(angles[index], N, separation)
+            for angle in range(len(reflections)):
+
+                u = stg.generate_polarization_steering([reflections[angle], ], E_ref)
+                A = stg.merge_space_polarization_steering(A_s, u)
+                Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
+
+            index = Pmaxexp.index(max(Pmaxexp))
+
+            ESAGE_polarization[signal] = reflections[index]
+
+            u_e = stg.generate_polarization_steering([reflections[index], ], E_ref)
+            A_filter = stg.merge_space_polarization_steering(A_e, u_e)
+
+            Ks[signal, signal] = np.abs(((1/(np.conj(A_filter).T@A_filter)))@((np.conj(A_filter).T@Cx@A_filter)/(np.conj(A_filter).T@A_filter)-1/model_order))
 
             steering_est[:, signal] = A_filter[:, 0]
 
@@ -236,3 +309,18 @@ def SAGE_sparse(received_signal, model_order, positions, wavenumber, resolution)
             doas_est[:, signal] = A_filter[:, 0]
 
     print(ESAGE_doas)
+
+def distancePairing(true, estimated, pair):
+    tru = np.vstack(true)
+    est = np.vstack(estimated)
+    paired = [0]*len(pair)
+
+    for column_out in range(tru.shape[1]):
+        error = float('inf')
+        for column_in in range(est.shape[1]):
+            erro = np.sum(np.abs(tru[:, column_out] - est[:, column_in]))
+            if erro < error:
+                error = erro
+                paired[column_out] = pair[column_in]
+
+    return paired

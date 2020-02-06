@@ -18,28 +18,31 @@ for reflector in reflectors:
     reflections.append(geo.getReflectionAngle2(transmitter, reflector, receiver, True))
     distances.append(geo.getPointDistance(transmitter, reflector)+geo.getPointDistance(reflector, receiver))
     line = geo.Line.fromPoints(transmitter, reflector)
-# print(angles)
-# print(reflections)
-total_tries = 1000
+
+print(angles)
+print(reflections)
+
+total_tries = 100
 
 SNRs = np.arange(5, 30, 5)
 errors = [0]*len(SNRs)
 tries = np.arange(0, total_tries, 1)
 index = 0
 for SNR in SNRs:
-    # print(SNR)
+
     sucessos = 0
     for trie in tries:
-        A = str.generate_ula_vectors(angles, 15, 1/2)
-        S = sig.gen_signal(2, 2000)
+        A = str.generate_ula_vectors_center(angles, 15, 1/2)
+        S = sig.gen_signal(2, 1000)
 
         u = str.generate_polarization_steering(reflections, 1)
 
         Z = str.merge_space_polarization_steering(A, u)
         X = np.matmul(Z, S)
         X = sig.add_noise(X, SNR)
+        X = sig.doFBA_Polarization(X)
 
-        DOAS, REFLECS = est.SAGE_Polarization(X, 2, 0.01, 1/2, 1)
+        DOAS, REFLECS = est.SAGE_Polarization_Center(X, 2, 0.01, 1/2, 1)
         DIST = est.distancePairing((angles, reflections), (DOAS, REFLECS), distances)
         possible_positions = []
 

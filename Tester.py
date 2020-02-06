@@ -5,6 +5,7 @@ import DOAEstimators as est
 import numpy as np
 import AlgebraLibrary as alg
 import GeometryLibrary as geo
+import tensorly.tenalg as tls
 
 # A = str.generate_ula_vectors([-45, 60], 8, 1/2)
 # S = sig.gen_signal(2, 100, 15)
@@ -69,3 +70,16 @@ import GeometryLibrary as geo
 #
 # s = sig.generate_OFDM_signal(16000, 32, [0.3, -0.5, 0, 1, 0.2, -0.3], 5, 15, True, True)
 
+# angles = np.arange(0, 120, 1)
+# results = []
+#
+# for angle in angles:
+#     vector = str.generate_polarization_steering((angle, ), 1)
+#     results.append((vector[0]/vector[1])[0])
+#
+# plt.plot(angles, results)
+# plt.show()
+
+A = np.array([[1, 1], [1, 1]])
+u = np.atleast_2d(np.array([[2, 3],[4,5]]))
+X = tls.khatri_rao([A,u])

@@ -119,6 +119,13 @@ def getReflectionAngle(transmitter, reflector, receiver, inDegree = False):
         return line_1.getAngle()*180/np.pi
     return line_1.getAngle()
 
+def getReflectionAngle2(transmitter, reflector, receiver, inDegree = False):
+    doa = getIncidenceAngle(reflector, receiver, inDegree)
+    line_1 = Line.fromPoints(transmitter, reflector)
+    if inDegree:
+        return (np.abs(line_1.getAngle())*180/np.pi) + (90-np.abs(doa))
+    return np.abs(line_1.getAngle()) + (np.pi-np.abs(doa))
+
 def reflectionToSlope(doa, reflection, inDegrees = False):
     if doa < 0:
         if inDegrees:
@@ -131,6 +138,19 @@ def reflectionToSlope(doa, reflection, inDegrees = False):
             return -1*np.tan(reflection*np.pi/180)
         else:
             return -1*np.tan(reflection)
+
+def reflectionToSlope2(doa, reflection, inDegrees = False):
+    if doa < 0:
+        if inDegrees:
+            return np.tan((reflection-(90-np.abs(doa)))*np.pi/180)
+        else:
+            return np.tan(reflection-(np.pi-np.abs(doa)))
+
+    else:
+        if inDegrees:
+            return -1*np.tan((reflection-(90-np.abs(doa)))*np.pi/180)
+        else:
+            return -1*np.tan((reflection-(np.pi-np.abs(doa))))
 
 def incidenceToSlope(angle, inDegres = False):
     if angle > 0:
