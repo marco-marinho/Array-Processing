@@ -6,7 +6,7 @@ import numpy as np
 import GeometryLibrary as geo
 
 transmitter = geo.Point(0, 30)
-reflectors = [geo.Point(-20, 20), geo.Point(15, 10)]
+reflectors = [geo.Point(-30, 20), geo.Point(25, 10), geo.Point(15, 17)]
 receiver = geo.Point(0, 0)
 
 angles = []
@@ -20,20 +20,19 @@ for reflector in reflectors:
     line = geo.Line.fromPoints(transmitter, reflector)
 
 print(angles)
-print(reflections)
-
-total_tries = 100
+total_tries = 30
 
 SNRs = np.arange(5, 30, 5)
 errors = [0]*len(SNRs)
 tries = np.arange(0, total_tries, 1)
 index = 0
+
 for SNR in SNRs:
 
     sucessos = 0
     for trie in tries:
-        A = str.generate_ula_vectors_center(angles, 15, 1/2)
-        S = sig.gen_signal(2, 1000)
+        A = str.generate_ula_vectors_center(angles, 11, 1/2)
+        S = sig.gen_signal(len(reflectors), 1000)
 
         u = str.generate_polarization_steering(reflections, 1)
 
@@ -42,7 +41,10 @@ for SNR in SNRs:
         X = sig.add_noise(X, SNR)
         X = sig.doFBA_Polarization(X)
 
-        DOAS, REFLECS = est.SAGE_Polarization_Center(X, 2, 0.01, 1/2, 1)
+        ESPRIT = est.ESPRIT_Polarization(X, len(reflectors))
+        print(ESPRIT)
+
+        DOAS, REFLECS = est.SAGE_Polarization_Center(X, len(reflectors), 0.01, 1/2, 1)
         DIST = est.distancePairing((angles, reflections), (DOAS, REFLECS), distances)
         possible_positions = []
 
@@ -52,11 +54,10 @@ for SNR in SNRs:
             transmissor_longinquo_reflection = geo.getPointsPositiveY(geo.getPointGivenSlopeDistance(geo.reflectionToSlope2(doa, reflection, True), receiver, distance))[0]
             possible_positions.append(geo.Line.fromPoints(transmissor_longinquo_doa, transmissor_longinquo_reflection))
 
-        estimated_pos = geo.getLinesIntercept(possible_positions[0], possible_positions[1])
+        estimated_pos = geo.getPositionEstimate(possible_positions)
         error = geo.getPointDistance(transmitter, estimated_pos)
-        print(error)
         distance_transmitter = geo.getPointDistance(estimated_pos, receiver)
-
+        print(error)
         if distance_transmitter > distance*1.1:
             print('fail')
         else:

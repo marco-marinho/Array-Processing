@@ -195,8 +195,8 @@ def SAGE_Polarization_Center(received_signal, model_order, resolution = 0.1, sep
     angles = np.arange(-90, 90+resolution, resolution)
     reflections = np.arange(0, 180+resolution, resolution)
 
-    doas_ini = np.arange(0, 180, 180 / model_order)
-    reflection_ini = np.zeros(model_order)
+    doas_ini = np.arange(-90+(180/(model_order+1)), 90-(180/(model_order+1))+1, 180 / (model_order+1))
+    reflection_ini = (np.ones(model_order))*60
 
     ESAGE_doas = np.zeros(model_order)
     ESAGE_polarization = np.zeros(model_order)

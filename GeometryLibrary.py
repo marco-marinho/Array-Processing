@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 # Class containing a point in space
 class Point:
@@ -172,3 +173,16 @@ def getReflectorLine(line_doa, angle_reflection):
     line_reflector = Line(m_reflector, 0)
 
     return line_reflector
+
+def getPositionEstimate(lines):
+    pares = list(itertools.combinations(lines, 2))
+    x = 0
+    y = 0
+    positions = 0
+    for par in pares:
+        position = getLinesIntercept(par[0], par[1])
+        x += position.getX()
+        y += position.getY()
+        positions += 1
+
+    return Point(x/positions, y/positions)

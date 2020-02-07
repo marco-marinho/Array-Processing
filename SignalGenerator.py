@@ -25,7 +25,7 @@ def doFBA(signal):
 def doFBA_Polarization(signal):
     X_1 = np.concatenate((signal[::2, :], np.fliplr(np.flipud(np.conj(signal[::2, :])))), axis=1)
     X_2 = np.concatenate((signal[1::2, :], np.fliplr(np.flipud(np.conj(signal[1::2, :])))), axis=1)
-    X = np.empty((X_1.shape[0]+X_2.shape[0],X_1.shape[1]), dtype=complex)
+    X = np.empty((X_1.shape[0] + X_2.shape[0], X_1.shape[1]), dtype=complex)
     X[::2, :] = X_1
     X[1::2, :] = X_2
     return X
