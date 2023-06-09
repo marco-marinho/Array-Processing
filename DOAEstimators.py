@@ -81,6 +81,23 @@ def MUSIC(signal, model_order, resolution, separation=1 / 2):
 
     return angular_power, angles
 
+def Min_Norm(signal, model_order, resolution, separation=1 / 2):
+    Qs, Qn = alg.get_subspaces(signal, model_order)
+    angular_power = []
+    angles = np.arange(-90, 90, resolution)
+    elements = np.shape(signal)[0]
+    Pi_n = Qn @ Qn.conj().T
+    w = np.zeros(elements)
+    w[0] = 1
+    w = np.atleast_2d(w)
+    W = w.T @ w
+
+    for angle in angles:
+        A = stg.generate_ula_vectors([angle, ], elements, separation)
+        p = np.abs((A.conj().T @ A) / (A.conj().T @ Pi_n @ W @ Pi_n @ A))
+        angular_power.append(np.squeeze(p))
+
+    return angular_power, angles
 
 def ESPRIT_Polarization(signal, model_order, separation=1 / 2):
     antennas = int(np.shape(signal)[0] / 2)
