@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.polynomial.polynomial as np_poly
 from . import _steering as stg
 from . import _algebra as alg
 
@@ -33,7 +34,7 @@ def CAPON_MVDR(signal, resolution, separation=1 / 2):
 
 
 def ESPRIT(signal, model_order, separation=1 / 2):
-    Qs, Qn = alg.get_subspaces(signal, model_order)
+    Qs, _ = alg.get_subspaces(signal, model_order)
     phi = np.linalg.lstsq(Qs[0:-1, :], Qs[1:, :], rcond=None)[0]
     ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
 
@@ -41,7 +42,7 @@ def ESPRIT(signal, model_order, separation=1 / 2):
 
 
 def MUSIC(signal, model_order, resolution, separation=1 / 2):
-    Qs, Qn = alg.get_subspaces(signal, model_order)
+    _, Qn = alg.get_subspaces(signal, model_order)
     angular_power = []
     angles = np.arange(-90, 90, resolution)
     elements = np.shape(signal)[0]
@@ -55,7 +56,7 @@ def MUSIC(signal, model_order, resolution, separation=1 / 2):
 
 
 def Min_Norm(signal, model_order, resolution, separation=1 / 2):
-    Qs, Qn = alg.get_subspaces(signal, model_order)
+    _, Qn = alg.get_subspaces(signal, model_order)
     angular_power = []
     angles = np.arange(-90, 90, resolution)
     elements = np.shape(signal)[0]
@@ -73,6 +74,23 @@ def Min_Norm(signal, model_order, resolution, separation=1 / 2):
     return angular_power, angles
 
 
+def Root_MUSIC(received_signal, model_order, separation=1 / 2):
+    _, Qn = alg.get_subspaces(received_signal, model_order)
+    C = Qn @ Qn.conj().T
+    m = C.shape[0]
+
+    a = np.zeros(2 * m - 1, dtype=complex)
+    for k in range(len(a)):
+        a[k] = np.trace(C, k - m - 1)
+
+    ra = np_poly.polyroots(a)
+    uc_dist = np.abs(np.abs(ra) - 1)
+    idx_ord = np.argsort(uc_dist)
+    ra = ra[idx_ord]
+    angle = np.arcsin(-np.angle(ra) / (2 * np.pi * separation)) * 180 / np.pi
+    return angle[:model_order]
+
+
 def SAGE(received_signal, model_order, resolution=0.1, separation=1 / 2):
     Xn = received_signal
     angles = np.arange(-90, 90 + resolution, resolution)
@@ -86,7 +104,7 @@ def SAGE(received_signal, model_order, resolution=0.1, separation=1 / 2):
 
     Ks = np.identity(model_order)
     last_DOAS = []
-    for iter in range(30):
+    for _ in range(30):
 
         for signal in range(model_order):
 
