@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.polynomial.polynomial as np_poly
+import itertools
 from . import _steering as stg
 from . import _algebra as alg
 
@@ -9,11 +10,11 @@ def beamformer(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    resolution: float
+    resolution
         The angular resolution of the angular power spectrum to be returned.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -30,9 +31,9 @@ def beamformer(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     R = alg.get_covariance(signal)
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors(angle, elements, separation)
+        A = stg.generate_ula_vectors_center(angle, elements, separation)
         p = np.abs(np.matmul(np.matmul(A.conj().T, R), A))
-        angular_power[idx] = np.squeeze(p)
+        angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
     return angular_power, angles
 
@@ -44,11 +45,11 @@ def CAPON_MVDR(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    resolution: float
+    resolution
         The angular resolution of the angular power spectrum to be returned.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -66,9 +67,9 @@ def CAPON_MVDR(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     R_inv = np.linalg.inv(R)
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors([angle, ], elements, separation)
+        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
         p = 1 / np.abs(np.matmul(np.matmul(A.conj().T, R_inv), A))
-        angular_power[idx] = np.squeeze(p)
+        angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
     return angular_power, angles
 
@@ -83,11 +84,11 @@ def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> n
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    model_order: int
+    model_order
         The number of signals whose DOAs are to be estimated.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -115,13 +116,13 @@ def MUSIC(signal: np.ndarray, model_order: int,
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    model_order: int
+    model_order
         The number of signals whose DOAs are to be estimated.
-    resolution: float
+    resolution
         The angular resolution of the angular power spectrum to be returned.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -138,9 +139,9 @@ def MUSIC(signal: np.ndarray, model_order: int,
     elements = np.shape(signal)[0]
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors([angle, ], elements, separation)
+        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
         p = np.abs((A.conj().T @ A) / (A.conj().T @ Qn @ Qn.conj().T @ A))
-        angular_power[idx] = np.squeeze(p)
+        angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
     return angular_power, angles
 
@@ -156,13 +157,13 @@ def Min_Norm(signal: np.ndarray, model_order: int,
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    model_order: int
+    model_order
         The number of signals whose DOAs are to be estimated.
-    resolution: float
+    resolution
         The angular resolution of the angular power spectrum to be returned.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -178,15 +179,13 @@ def Min_Norm(signal: np.ndarray, model_order: int,
     angular_power = np.zeros(len(angles))
     elements = np.shape(signal)[0]
     Pi_n = Qn @ Qn.conj().T
-    w = np.zeros(elements)
-    w[0] = 1
-    w = np.atleast_2d(w)
-    W = w.T @ w
+    W = np.zeros((elements, elements))
+    W[0, 0] = 1
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors([angle, ], elements, separation)
+        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
         p = np.abs((A.conj().T @ A) / (A.conj().T @ Pi_n @ W @ Pi_n @ A))
-        angular_power[idx] = np.squeeze(p)
+        angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
     return angular_power, angles
 
@@ -201,11 +200,11 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    model_order: int
+    model_order
         The number of signals whose DOAs are to be estimated.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
@@ -231,6 +230,95 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
     return angle[:model_order]
 
 
+def SML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+    """Stochastic Maximum Likelihood DOA estimation.
+    The model order is not strictly necessary for an ML estimator, but without it the estimation will take an
+    unreasonable amount of time. The estimator can be extended to return the current log-likelihood and multiple calls
+    to this function can be made for varying model orders.
+
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    resolution
+        The angular resolution with which to perform the estimation.
+    separation
+        The inner element separation of the array.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
+    return __ML("S", signal, model_order, resolution, separation)
+
+
+def DML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+    """Deterministic Maximum Likelihood DOA estimation.
+    The model order is not strictly necessary for an ML estimator, but without it the estimation will take an
+    unreasonable amount of time. The estimator can be extended to return the current log-likelihood and multiple calls
+    to this function can be made for varying model orders.
+
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    resolution
+        The angular resolution with which to perform the estimation.
+    separation
+        The inner element separation of the array.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
+    return __ML("D", signal, model_order, resolution, separation)
+
+
+def __ML(mode: str, signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+    angles = np.arange(-90, 90, resolution)
+    estimates = itertools.product(angles, repeat=model_order)
+    R = alg.get_covariance(signal)
+    M = signal.shape[0]
+    best_likelihood = np.inf
+    output = np.ndarray([])
+
+    for estimate in estimates:
+        A_ml = stg.generate_ula_vectors_center(estimate, M, separation)
+        Sigma_A = A_ml @ np.linalg.pinv(A_ml)
+        Ort_Sigma_A = np.eye(M) - Sigma_A
+
+        if mode == "D":
+            current_likelihood = np.trace(Ort_Sigma_A @ R)
+        elif mode == "S":
+            omega = (1 / (M - model_order)) * np.trace(Ort_Sigma_A @ R)
+            P = np.linalg.pinv(A_ml) @ (R - omega * np.eye(M)) @ np.linalg.pinv(A_ml).conj().T
+            current_likelihood = np.log(np.linalg.det(A_ml @ P @ A_ml.conj().T + omega * np.eye(M)))
+        else:
+            raise ValueError("Invalid estimator type")
+
+        if current_likelihood < best_likelihood:
+            output = estimate
+            best_likelihood = current_likelihood
+
+    return output
+
+
 def SAGE(signal: np.ndarray, model_order: int,
          resolution: float = 0.1, separation: float = 1 / 2) -> np.ndarray:
     """SAGE DOA estimation.
@@ -242,13 +330,13 @@ def SAGE(signal: np.ndarray, model_order: int,
 
     Parameters
     ----------
-    signal: array_like
+    signal
         A MxN array containing the N received samples measured at the M antennas of the array.
-    model_order: int
+    model_order
         The number of signals whose DOAs are to be estimated.
-    resolution: float
+    resolution
         The angular resolution of the angular power spectrum to be returned.
-    separation: float
+    separation
         The inner element separation of the array.
 
     Returns
