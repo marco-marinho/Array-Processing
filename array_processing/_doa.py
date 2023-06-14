@@ -74,7 +74,7 @@ def CAPON_MVDR(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     return angular_power, angles
 
 
-def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> np.ndarray:
+def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
     """ESPRIT DOA estimation.
     It requires a model order estimation to properly separate the signal and noise subspaces.
 
@@ -102,7 +102,7 @@ def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> n
     phi = np.linalg.lstsq(Qs[0:-1, :], Qs[1:, :], rcond=None)[0]
     ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
 
-    return ESPRIT_doas
+    return tuple(ESPRIT_doas)
 
 
 def MUSIC(signal: np.ndarray, model_order: int,
@@ -190,7 +190,7 @@ def Min_Norm(signal: np.ndarray, model_order: int,
     return angular_power, angles
 
 
-def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> np.ndarray:
+def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
     """Root Music DOA estimation.
     It requires a model order estimation to properly separate the signal and noise subspaces.
 
@@ -227,10 +227,10 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
     idx_ord = np.argsort(uc_dist)
     rb = rb[idx_ord]
     angle = np.arcsin(-np.angle(rb) / (2 * np.pi * separation)) * 180 / np.pi
-    return angle[:model_order]
+    return tuple(angle[:model_order])
 
 
-def SML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+def SML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
     """Stochastic Maximum Likelihood DOA estimation.
     The model order is not strictly necessary for an ML estimator, but without it the estimation will take an
     unreasonable amount of time. The estimator can be extended to return the current log-likelihood and multiple calls
@@ -260,7 +260,7 @@ def SML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separatio
     return __ML("S", signal, model_order, resolution, separation)
 
 
-def DML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+def DML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
     """Deterministic Maximum Likelihood DOA estimation.
     The model order is not strictly necessary for an ML estimator, but without it the estimation will take an
     unreasonable amount of time. The estimator can be extended to return the current log-likelihood and multiple calls
@@ -290,7 +290,8 @@ def DML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separatio
     return __ML("D", signal, model_order, resolution, separation)
 
 
-def __ML(mode: str, signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2):
+def __ML(mode: str, signal: np.ndarray, model_order: int,
+         resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
     angles = np.arange(-90, 90, resolution)
     estimates = itertools.product(angles, repeat=model_order)
     R = alg.get_covariance(signal)
@@ -320,7 +321,7 @@ def __ML(mode: str, signal: np.ndarray, model_order: int, resolution: float = 0.
 
 
 def SAGE(signal: np.ndarray, model_order: int,
-         resolution: float = 0.1, separation: float = 1 / 2) -> np.ndarray:
+         resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
     """SAGE DOA estimation.
     It requires a model order estimation to properly separate the signal and noise subspaces.
 
@@ -392,4 +393,4 @@ def SAGE(signal: np.ndarray, model_order: int,
         else:
             last_DOAS = ESAGE_doas
 
-    return ESAGE_doas
+    return tuple(ESAGE_doas)
