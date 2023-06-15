@@ -223,7 +223,7 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
         b[k] = np.trace(C, k - m + 1)
 
     rb = np_poly.polyroots(b)
-    rb = rb[np.abs(rb) < 1]
+    rb = rb[np.abs(rb) <= 1]
     uc_dist = np.abs(np.abs(rb) - 1)
     idx_ord = np.argsort(uc_dist)
     rb = rb[idx_ord]
@@ -293,6 +293,9 @@ def DML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separatio
 
 def __ML(mode: str, signal: np.ndarray, model_order: int,
          resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
+    """ This function is part of the private API and encapsulates both the stochastic and deterministic ML. Do not call
+    it directly. Instead, call the respect DML and SML functions.
+    """
     angles = np.arange(-90, 90, resolution)
     estimates = itertools.product(angles, repeat=model_order)
     R = alg.get_covariance(signal)
