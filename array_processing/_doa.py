@@ -220,9 +220,10 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
 
     b = np.zeros(2 * m - 1, dtype=complex)
     for k in range(len(b)):
-        b[k] = np.trace(C, k - m - 1)
+        b[k] = np.trace(C, k - m + 1)
 
     rb = np_poly.polyroots(b)
+    rb = rb[np.abs(rb) < 1]
     uc_dist = np.abs(np.abs(rb) - 1)
     idx_ord = np.argsort(uc_dist)
     rb = rb[idx_ord]
