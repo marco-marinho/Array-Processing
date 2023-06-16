@@ -403,14 +403,18 @@ def SAGE(signal: np.ndarray, model_order: int,
 def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
     d = model_order
     N = signal.shape[0]
+    K = signal.shape[1]
 
-    A = np.zeros([N - d, d + 1], dtype=complex)
+    As = []
     B = np.eye(N - d)
 
-    x = signal[:, 0]
-    for i in reversed(range(d + 1)):
-        for j in range(N - d):
-            A[j, d - i] = x[i + j]
+    for t in range(K):
+        A = np.zeros([N - d, d + 1], dtype=complex)
+        x = signal[:, t]
+        for i in reversed(range(d + 1)):
+            for j in range(N - d):
+                A[j, d - i] = x[i + j]
+        As.append(A)
 
     T = np.zeros([d + 1, d + 1], dtype=complex)
 
@@ -430,9 +434,15 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tup
 
     T = T / np.sqrt(2)
 
+    b_hat = np.zeros(d + 1)
     for it in range(300):
 
-        Qx = T.conj().T @ A.conj().T @ np.linalg.inv(B.conj().T @ B) @ A @ T
+        C = np.zeros([d + 1, d + 1], dtype=complex)
+        B_proj = np.linalg.inv(B.conj().T @ B)
+        for t in range(K):
+            C += As[t].conj().T @ B_proj @ As[t]
+
+        Qx = T.conj().T @ C @ T
 
         w, v = np.linalg.eig(np.real(Qx))
         ind = np.argsort(w)
