@@ -327,7 +327,8 @@ def __ML(mode: str, signal: np.ndarray, model_order: int,
 def SAGE(signal: np.ndarray, model_order: int,
          resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
     """SAGE DOA estimation.
-    It requires a model order estimation to properly separate the signal and noise subspaces.
+    The model order could, theoretically, be a parameter estimated by SAGE. This implementation assumes the model
+    order is known.
 
     See Also
     ________
@@ -400,7 +401,31 @@ def SAGE(signal: np.ndarray, model_order: int,
     return tuple(ESAGE_doas)
 
 
-def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
+def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, epsilon: float = 1e-10) -> tuple[float]:
+    """IQML DOA estimation.
+    Iterative quadratic maximum likelihood estimator. Requires a model order estimation.
+
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    separation
+        The inner element separation of the array.
+    epsilon:
+        The tolerance for change in the polynomial vector for stopping the iterations.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
     d = model_order
     N = signal.shape[0]
     K = signal.shape[1]
@@ -435,7 +460,7 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tup
     T = T / np.sqrt(2)
 
     b_hat = np.zeros(d + 1)
-    for it in range(300):
+    for it in range(1000):
 
         C = np.zeros([d + 1, d + 1], dtype=complex)
         B_proj = np.linalg.inv(B.conj().T @ B)
@@ -448,8 +473,12 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tup
         ind = np.argsort(w)
         v = v[:, ind]
 
-        b_hat = T @ v[:, 0]
+        b_hat_next = T @ v[:, 0]
 
+        if np.linalg.norm(b_hat - b_hat_next) < epsilon:
+            break
+
+        b_hat = b_hat_next
         B = np.zeros([N, N - d], dtype=complex)
         for i in range(N - d):
             B[i: i + d + 1, i] = np.conj(b_hat[::-1])
