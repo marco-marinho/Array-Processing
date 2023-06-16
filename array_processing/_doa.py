@@ -400,7 +400,7 @@ def SAGE(signal: np.ndarray, model_order: int,
     return tuple(ESAGE_doas)
 
 
-def IQML(signal: np.ndarray, model_order: int, separation:float = 1/2) -> tuple[float]:
+def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
     d = model_order
     N = signal.shape[0]
 
@@ -426,8 +426,8 @@ def IQML(signal: np.ndarray, model_order: int, separation:float = 1/2) -> tuple[
             T[i, 2 * i + 1] = 1j
             T[d - i, 2 * i] = 1
             T[d - i, 2 * i + 1] = -1j
-        T[d//2, d//2 + 1] = 1
-        
+        T[d // 2, d // 2 + 1] = 1
+
     T = T / np.sqrt(2)
 
     for it in range(300):
@@ -445,5 +445,5 @@ def IQML(signal: np.ndarray, model_order: int, separation:float = 1/2) -> tuple[
             B[i: i + d + 1, i] = np.conj(b_hat[::-1])
 
     rb = np_poly.polyroots(np.conj(b_hat))
-    angle = np.arcsin(-np.angle(rb) / (2 * np.pi * 1 / 2)) * 180 / np.pi
+    angle = np.arcsin(-np.angle(rb) / (2 * np.pi * separation)) * 180 / np.pi
     return tuple(angle)
