@@ -12,6 +12,7 @@ available are:
 - SAGE
 - DML
 - SML
+- IQML
 
 The methods included so far only consider ULAs.
 

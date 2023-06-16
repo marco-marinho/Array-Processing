@@ -398,3 +398,45 @@ def SAGE(signal: np.ndarray, model_order: int,
             last_DOAS = ESAGE_doas
 
     return tuple(ESAGE_doas)
+
+
+def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
+    d = model_order
+    N = signal.shape[0]
+
+    A = np.zeros([N - d, d + 1], dtype=complex)
+    B = np.eye(N - d)
+
+    x = signal[:, 0]
+    for i in reversed(range(d + 1)):
+        for j in range(N - d):
+            A[j, d - i] = x[i + j]
+
+    T = np.zeros([d + 1, d + 1], dtype=complex)
+
+    if d % 2 != 0:
+        for i in range(((d + 1) // 2)):
+            T[i, 2 * i] = 1
+            T[i, 2 * i + 1] = 1j
+            T[((d + 1) // 2) + i, d - 1 - 2 * i] = 1
+            T[((d + 1) // 2) + i, d - 2 * i] = -1j
+
+    T = T / np.sqrt(2)
+
+    for it in range(300):
+
+        Qx = T.conj().T @ A.conj().T @ np.linalg.inv(B.conj().T @ B) @ A @ T
+
+        w, v = np.linalg.eig(np.real(Qx))
+        ind = np.argsort(w)
+        v = v[:, ind]
+
+        b_hat = T @ v[:, 0]
+
+        B = np.zeros([N, N - d], dtype=complex)
+        for i in range(N - d):
+            B[i: i + d + 1, i] = np.conj(b_hat[::-1])
+
+    rb = np_poly.polyroots(np.conj(b_hat))
+    angle = np.arcsin(-np.angle(rb) / (2 * np.pi * separation)) * 180 / np.pi
+    return tuple(angle)
