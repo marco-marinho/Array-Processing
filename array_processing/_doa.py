@@ -401,9 +401,10 @@ def SAGE(signal: np.ndarray, model_order: int,
     return tuple(ESAGE_doas)
 
 
-def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, epsilon: float = 1e-10) -> tuple[float]:
+def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
+         max_iter: int = 1000, epsilon: float = 0.01):
     """IQML DOA estimation.
-    Iterative quadratic maximum likelihood estimator. Requires a model order estimation.
+    Iterative Quadratic Maximum Likelihood estimator. Requires a model order estimate.
 
     See Also
     ________
@@ -417,6 +418,8 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, epsilo
         The number of signals whose DOAs are to be estimated.
     separation
         The inner element separation of the array.
+    max_iter:
+        The maximum number of iterations allowed.
     epsilon:
         The tolerance for change in the polynomial vector for stopping the iterations.
 
@@ -426,12 +429,80 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, epsilo
         An ndarray containing the estimated angles.
 
     """
+    return __IQML_MODE(signal, model_order, separation, max_iter, epsilon, algorithm="IQML")
+
+
+def MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
+         max_iter: int = 1000, epsilon: float = 0.01):
+    """Root-WSF (Weighted Subspace Fitting) or MODE (Method of Direction Esimation) DOA estimation algorithm.
+    Requires a model order estimate.
+
+    The literature states that MODE is a two-step algorithm. However, in some cases the estimates can benefit from
+    further iterations. See Van Trees book for on Optimal Array Processing for more details.
+
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    separation
+        The inner element separation of the array.
+    max_iter:
+        The maximum number of iterations allowed.
+    epsilon:
+        The tolerance for change in the polynomial vector for stopping the iterations.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
+    return __IQML_MODE(signal, model_order, separation, max_iter, epsilon, algorithm="MODE")
+
+
+def __IQML_MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
+                max_iter: int = 1000, epsilon: float = 0.01, algorithm="MODE") -> tuple[float]:
+    """IQML and MODE DOA estimation backend.
+    It should not be called directly from outside its own module, call the IQML and MODE functions instead.
+
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    separation
+        The inner element separation of the array.
+    max_iter:
+        The maximum number of iterations allowed.
+    epsilon:
+        The tolerance for change in the polynomial vector for stopping the iterations.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
+    if algorithm == "MODE":
+        signal, _ = alg.get_subspaces(signal, model_order)
+    elif algorithm != "IQML":
+        raise ValueError("Only IQML and MODE types are supported")
     d = model_order
     N = signal.shape[0]
     K = signal.shape[1]
 
     As = []
-    B = np.eye(N - d)
 
     for t in range(K):
         A = np.zeros([N - d, d + 1], dtype=complex)
@@ -460,7 +531,8 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, epsilo
     T = T / np.sqrt(2)
 
     b_hat = np.zeros(d + 1)
-    for it in range(1000):
+    B = np.eye(N - d)
+    for it in range(max_iter):
 
         C = np.zeros([d + 1, d + 1], dtype=complex)
         B_proj = np.linalg.inv(B.conj().T @ B)
