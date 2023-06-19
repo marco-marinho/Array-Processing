@@ -190,6 +190,31 @@ def Min_Norm(signal: np.ndarray, model_order: int,
     return angular_power, angles
 
 
+def __Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2, algorithm="MUSIC") -> tuple[float]:
+    _, Qn = alg.get_subspaces(signal, model_order)
+    m = np.shape(signal)[0]
+    C = np.zeros([m, m], dtype=complex)
+    if algorithm == "MUSIC":
+        C = Qn @ Qn.conj().T
+    elif algorithm == "MinNorm":
+        Pi_n = Qn @ Qn.conj().T
+        W = np.zeros((m, m), dtype=complex)
+        W[0, 0] = 1
+        C = Pi_n @ W @ Pi_n.conj().T
+
+    b = np.zeros(2 * m - 1, dtype=complex)
+    for k in range(len(b)):
+        b[k] = np.trace(C, k - m + 1)
+
+    rb = np_poly.polyroots(b)
+    rb = rb[np.abs(rb) <= 1]
+    uc_dist = np.abs(np.abs(rb) - 1)
+    idx_ord = np.argsort(uc_dist)
+    rb = rb[idx_ord]
+    angle = np.arcsin(-np.angle(rb) / (2 * np.pi * separation)) * 180 / np.pi
+    return tuple(angle[:model_order])
+
+
 def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
     """Root Music DOA estimation.
     It requires a model order estimation to properly separate the signal and noise subspaces.
@@ -213,22 +238,33 @@ def Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2) 
         An ndarray containing the estimated angles.
 
     """
+    return __Root_MUSIC(signal, model_order, separation, "MUSIC")
 
-    _, Qn = alg.get_subspaces(signal, model_order)
-    C = Qn @ Qn.conj().T
-    m = C.shape[0]
 
-    b = np.zeros(2 * m - 1, dtype=complex)
-    for k in range(len(b)):
-        b[k] = np.trace(C, k - m + 1)
+def Root_MinNorm(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
+    """Root MinNorm DOA estimation.
+    It requires a model order estimation to properly separate the signal and noise subspaces.
 
-    rb = np_poly.polyroots(b)
-    rb = rb[np.abs(rb) <= 1]
-    uc_dist = np.abs(np.abs(rb) - 1)
-    idx_ord = np.argsort(uc_dist)
-    rb = rb[idx_ord]
-    angle = np.arcsin(-np.angle(rb) / (2 * np.pi * separation)) * 180 / np.pi
-    return tuple(angle[:model_order])
+    See Also
+    ________
+    array_processing.moe
+
+    Parameters
+    ----------
+    signal
+        A MxN array containing the N received samples measured at the M antennas of the array.
+    model_order
+        The number of signals whose DOAs are to be estimated.
+    separation
+        The inner element separation of the array.
+
+    Returns
+    -------
+    angles:
+        An ndarray containing the estimated angles.
+
+    """
+    return __Root_MUSIC(signal, model_order, separation, "MinNorm")
 
 
 def SML(signal: np.ndarray, model_order: int, resolution: float = 0.1, separation: float = 1 / 2) -> tuple[float]:
@@ -433,11 +469,11 @@ def IQML(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
 
 
 def MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
-         max_iter: int = 1000, epsilon: float = 0.01):
-    """Root-WSF (Weighted Subspace Fitting) or MODE (Method of Direction Esimation) DOA estimation algorithm.
+         max_iter: int = 1000, epsilon: float = 0.0001):
+    """Root-WSF (Weighted Subspace Fitting) or MODE (Method of Direction Estimation) DOA estimation algorithm.
     Requires a model order estimate.
 
-    The literature states that MODE is a two-step algorithm. However, in some cases the estimates can benefit from
+    The literature states that MODE is a two-step algorithm. However, in some cases, the estimates can benefit from
     further iterations. See Van Trees book for on Optimal Array Processing for more details.
 
     See Also
@@ -467,7 +503,7 @@ def MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
 
 
 def __IQML_MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2, /,
-                max_iter: int = 1000, epsilon: float = 0.01, algorithm="MODE") -> tuple[float]:
+                max_iter: int = 1000, epsilon: float = 0.0001, algorithm="MODE") -> tuple[float]:
     """IQML and MODE DOA estimation backend.
     It should not be called directly from outside its own module, call the IQML and MODE functions instead.
 

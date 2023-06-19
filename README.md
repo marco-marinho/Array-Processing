@@ -7,14 +7,17 @@ available are:
 - CAPON-MVDR
 - MUSIC
 - Min-Norm
-- Root-MUSIC
+- Root-MUSIC & Root-Min-Norm
 - ESPRIT
 - SAGE
 - DML
 - SML
 - IQML
+- MODE / Root-WSF
 
 The methods included so far only consider ULAs.
+
+You will also find AIC and MDL model order estimation methods.
 
 ## Installation
 
