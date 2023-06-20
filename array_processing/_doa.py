@@ -74,7 +74,7 @@ def CAPON_MVDR(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     return angular_power, angles
 
 
-def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> tuple[float]:
+def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2, algorithm="TLS") -> tuple[float]:
     """ESPRIT DOA estimation.
     It requires a model order estimation to properly separate the signal and noise subspaces.
 
@@ -90,6 +90,8 @@ def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> t
         The number of signals whose DOAs are to be estimated.
     separation
         The inner element separation of the array.
+    algorithm:
+        Select whether to use the TLS os LS versions of ESPRIT.
 
     Returns
     -------
@@ -99,8 +101,22 @@ def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2) -> t
     """
 
     Qs, _ = alg.get_subspaces(signal, model_order)
-    phi = np.linalg.lstsq(Qs[0:-1, :], Qs[1:, :], rcond=None)[0]
-    ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
+    if algorithm == "TLS":
+        U1 = Qs[0: -1, :]
+        U2 = Qs[1:, :]
+        C = np.r_[U1.conj().T, U2.conj().T] @ np.c_[U1, U2]
+        l, V = np.linalg.eig(C)
+        V = V[:, np.argsort(np.real(l))]
+        V = V[:, ::-1]
+        V_12 = V[:model_order, model_order:]
+        V_22 = V[model_order:, model_order:]
+        phi = -V_12 @ np.linalg.inv(V_22)
+        ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
+    elif algorithm == "LS":
+        phi = np.linalg.lstsq(Qs[0:-1, :], Qs[1:, :], rcond=None)[0]
+        ESPRIT_doas = np.arcsin(-np.angle(np.linalg.eigvals(phi)) / (2 * np.pi * separation)) * 180 / np.pi
+    else:
+        raise ValueError("Invalid algorithm, only TSL and LS are supported")
 
     return tuple(ESPRIT_doas)
 
