@@ -28,10 +28,10 @@ def beamformer(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     angles = np.arange(-90, 90, resolution)
     angular_power = np.zeros(len(angles))
     elements = np.shape(signal)[0]
-    R = alg.get_covariance(signal)
+    R = alg.covariance(signal)
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors_center(angle, elements, separation)
+        A = stg.ula_ch(angle, elements, separation)
         p = np.abs(np.matmul(np.matmul(A.conj().T, R), A))
         angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
@@ -63,11 +63,11 @@ def CAPON_MVDR(signal: np.ndarray, resolution: float, separation: float = 1 / 2)
     angles = np.arange(-90, 90, resolution)
     angular_power = np.zeros(len(angles))
     elements = np.shape(signal)[0]
-    R = alg.get_covariance(signal)
+    R = alg.covariance(signal)
     R_inv = np.linalg.inv(R)
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
+        A = stg.ula_ch([angle, ], elements, separation)
         p = 1 / np.abs(np.matmul(np.matmul(A.conj().T, R_inv), A))
         angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
@@ -100,7 +100,7 @@ def ESPRIT(signal: np.ndarray, model_order: int, separation: float = 1 / 2, algo
 
     """
 
-    Qs, _ = alg.get_subspaces(signal, model_order)
+    Qs, _ = alg.subspaces(signal, model_order)
     if algorithm == "TLS":
         U1 = Qs[0: -1, :]
         U2 = Qs[1:, :]
@@ -149,13 +149,13 @@ def MUSIC(signal: np.ndarray, model_order: int,
 
     """
 
-    _, Qn = alg.get_subspaces(signal, model_order)
+    _, Qn = alg.subspaces(signal, model_order)
     angles = np.arange(-90, 90, resolution)
     angular_power = np.zeros(len(angles))
     elements = np.shape(signal)[0]
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
+        A = stg.ula_ch([angle, ], elements, separation)
         p = np.abs((A.conj().T @ A) / (A.conj().T @ Qn @ Qn.conj().T @ A))
         angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
@@ -190,7 +190,7 @@ def Min_Norm(signal: np.ndarray, model_order: int,
 
     """
 
-    _, Qn = alg.get_subspaces(signal, model_order)
+    _, Qn = alg.subspaces(signal, model_order)
     angles = np.arange(-90, 90, resolution)
     angular_power = np.zeros(len(angles))
     elements = np.shape(signal)[0]
@@ -199,7 +199,7 @@ def Min_Norm(signal: np.ndarray, model_order: int,
     W[0, 0] = 1
 
     for idx, angle in enumerate(angles):
-        A = stg.generate_ula_vectors_center([angle, ], elements, separation)
+        A = stg.ula_ch([angle, ], elements, separation)
         p = np.abs((A.conj().T @ A) / (A.conj().T @ Pi_n @ W @ Pi_n @ A))
         angular_power[idx] = 10 * np.log10(np.squeeze(p))
 
@@ -207,7 +207,7 @@ def Min_Norm(signal: np.ndarray, model_order: int,
 
 
 def __Root_MUSIC(signal: np.ndarray, model_order: int, separation: float = 1 / 2, algorithm="MUSIC") -> tuple[float]:
-    _, Qn = alg.get_subspaces(signal, model_order)
+    _, Qn = alg.subspaces(signal, model_order)
     m = np.shape(signal)[0]
     C = np.zeros([m, m], dtype=complex)
     if algorithm == "MUSIC":
@@ -350,13 +350,13 @@ def __ML(mode: str, signal: np.ndarray, model_order: int,
     """
     angles = np.arange(-90, 90, resolution)
     estimates = itertools.product(angles, repeat=model_order)
-    R = alg.get_covariance(signal)
+    R = alg.covariance(signal)
     M = signal.shape[0]
     best_likelihood = np.inf
     output = np.ndarray([])
 
     for estimate in estimates:
-        A_ml = stg.generate_ula_vectors_center(estimate, M, separation)
+        A_ml = stg.ula_ch(estimate, M, separation)
         Sigma_A = A_ml @ np.linalg.pinv(A_ml)
         Ort_Sigma_A = np.eye(M) - Sigma_A
 
@@ -412,7 +412,7 @@ def SAGE(signal: np.ndarray, model_order: int,
     ESAGE_doas = np.zeros(model_order)
     N = np.shape(Xn)[0]
 
-    doas_est = stg.generate_ula_vectors(doas_ini, N, separation)
+    doas_est = stg.ula_steering(doas_ini, N, separation)
 
     Ks = np.identity(model_order)
     last_DOAS = []
@@ -424,21 +424,21 @@ def SAGE(signal: np.ndarray, model_order: int,
 
             Ky = doas_est @ Ks @ np.conj(doas_est).T + np.identity(N)
 
-            Ry = alg.get_covariance(Xn)
+            Ry = alg.covariance(Xn)
 
             Cx = Kx @ np.linalg.inv(Ky) @ Ry @ np.linalg.inv(Ky) @ Kx + Kx - Kx @ np.linalg.inv(Ky) @ Kx
 
             Pmaxexp = []
 
             for angle in range(len(angles)):
-                A = stg.generate_ula_vectors(angles[angle], N, separation)
+                A = stg.ula_steering(angles[angle], N, separation)
                 Pmaxexp.append(np.squeeze(np.abs((np.conj(A).T @ Cx @ A) / (np.conj(A).T @ A))))
 
             index = Pmaxexp.index(max(Pmaxexp))
 
             ESAGE_doas[signal] = angles[index]
 
-            A_filter = stg.generate_ula_vectors(angles[index], N, separation)
+            A_filter = stg.ula_steering(angles[index], N, separation)
 
             Ks[signal, signal] = np.abs(((1 / (np.conj(A_filter).T @ A_filter)) @ (
                     (np.conj(A_filter).T @ Cx @ A_filter) / (np.conj(A_filter).T @ A_filter))) - 1 / N)
@@ -547,7 +547,7 @@ def __IQML_MODE(signal: np.ndarray, model_order: int, separation: float = 1 / 2,
 
     """
     if algorithm == "MODE":
-        signal, _ = alg.get_subspaces(signal, model_order)
+        signal, _ = alg.subspaces(signal, model_order)
     elif algorithm != "IQML":
         raise ValueError("Only IQML and MODE types are supported")
     d = model_order

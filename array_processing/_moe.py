@@ -1,9 +1,9 @@
 import numpy as np
-from ._algebra import get_covariance
+from ._algebra import covariance
 
 
 def _get_lambdas_K_N(X: np.ndarray) -> (np.ndarray, int, int):
-    R = get_covariance(X)
+    R = covariance(X)
     K = X.shape[1]
     lambdas, _ = np.linalg.eig(R)
     lambdas = np.abs(lambdas)

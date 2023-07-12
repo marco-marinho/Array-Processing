@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 # Generates 4 QAM symbols for given number of sources and snapshots with specified SNR
-def gen_signal(sources, snapshots):
+def signal(sources, snapshots):
     real = np.random.choice([1, -1], (sources, snapshots))
     imaginary = 1j * np.random.choice([1, -1], (sources, snapshots))
     symbols = np.add(real, imaginary)
@@ -12,7 +12,7 @@ def gen_signal(sources, snapshots):
 
 
 # Adds AWGN noise with specified SNR measuring clean signal power
-def add_noise(signal, SNR):
+def awgn(signal, SNR):
     power = np.sum(np.square(np.absolute(signal))) / np.product(signal.shape)
     SNR_lin = 10 ** (SNR / 10)
     N0 = power / SNR_lin
@@ -21,12 +21,12 @@ def add_noise(signal, SNR):
     return noisy_signal
 
 
-def doFBA(signal):
+def fba(signal):
     return np.concatenate((signal, np.fliplr(np.flipud(np.conj(signal)))), axis=1)
 
 
-def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, SNR, plot_sent=False,
-                         plot_received=False):
+def ofdm_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, SNR, plot_sent=False,
+                plot_received=False):
     # Calculate number of OFDM data frames
     frame_number = int(snapshots / subcarriers)
 
@@ -61,7 +61,7 @@ def generate_OFDM_signal(snapshots, subcarriers, channel, cyclic_prefix_lenght, 
     chs_out = sig.lfilter(channel, 1, s_cyc, axis=0)
 
     # Add noise
-    x_out = add_noise(chs_out, SNR)
+    x_out = awgn(chs_out, SNR)
 
     # P/S conversion and cyclic prefix removal
     x_para = np.reshape(x_out, (subcarriers + cyclic_prefix_lenght, frame_number), order="F")
